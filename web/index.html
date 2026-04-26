@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQL Query Optimizer — Interactive Visualizer</title>
+    <meta name="description" content="Interactive SQL query optimizer visualization tool with cost-based plan comparison">
+    <link rel="stylesheet" href="/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="backdrop-glow"></div>
+
+    <!-- Header -->
+    <header id="main-header">
+        <div class="header-content">
+            <div class="logo">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>
+                <h1>Query Optimizer</h1>
+            </div>
+            <div class="header-actions">
+                <button id="btn-catalog" class="btn btn-ghost" onclick="toggleCatalog()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                    Catalog
+                </button>
+                <span class="badge">University DB</span>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <!-- SQL Input Panel -->
+        <section id="sql-panel" class="panel glass-panel">
+            <div class="panel-header">
+                <h2><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg> SQL Query</h2>
+                <div class="panel-actions">
+                    <select id="example-select" onchange="loadExample(this.value)">
+                        <option value="">Load Example...</option>
+                        <option value="basic">Basic Filter</option>
+                        <option value="join2">Two-Table Join</option>
+                        <option value="join3">Three-Table Join</option>
+                        <option value="complex">Complex Predicate</option>
+                        <option value="subquery">Subquery</option>
+                    </select>
+                    <button id="btn-optimize" class="btn btn-primary" onclick="optimizeQuery()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                        Optimize
+                    </button>
+                </div>
+            </div>
+            <textarea id="sql-input" spellcheck="false" placeholder="Enter SQL query...">SELECT student.name, course.title
+FROM student
+JOIN takes ON student.ID = takes.ID
+JOIN course ON takes.course_id = course.course_id
+WHERE course.dept_name = 'Comp. Sci.'</textarea>
+        </section>
+
+        <!-- Results Container -->
+        <div id="results-container" class="hidden">
+            <!-- Cost Summary -->
+            <section id="cost-summary" class="panel glass-panel">
+                <div class="cost-cards">
+                    <div class="cost-card unoptimized">
+                        <span class="cost-label">Unoptimized Cost</span>
+                        <span id="cost-unopt" class="cost-value">—</span>
+                        <span class="cost-unit">ms</span>
+                    </div>
+                    <div class="cost-card arrow">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                    </div>
+                    <div class="cost-card optimized">
+                        <span class="cost-label">Optimized Cost</span>
+                        <span id="cost-opt" class="cost-value">—</span>
+                        <span class="cost-unit">ms</span>
+                    </div>
+                    <div class="cost-card improvement">
+                        <span class="cost-label">Improvement</span>
+                        <span id="cost-improve" class="cost-value">—</span>
+                        <span class="cost-unit">%</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Plan Tabs -->
+            <section id="plan-section" class="panel glass-panel">
+                <div class="tab-bar">
+                    <button class="tab active" data-tab="logical" onclick="switchTab('logical')">Logical Plan</button>
+                    <button class="tab" data-tab="heuristic" onclick="switchTab('heuristic')">Optimized Logical</button>
+                    <button class="tab" data-tab="unopt-physical" onclick="switchTab('unopt-physical')">Unopt. Physical</button>
+                    <button class="tab" data-tab="physical" onclick="switchTab('physical')">Opt. Physical</button>
+                    <button class="tab" data-tab="comparison" onclick="switchTab('comparison')">Cost Comparison</button>
+                </div>
+                <div id="tab-content" class="tab-content">
+                    <div id="tab-logical" class="tab-pane active">
+                        <div id="tree-logical" class="plan-tree"></div>
+                    </div>
+                    <div id="tab-heuristic" class="tab-pane">
+                        <div id="tree-heuristic" class="plan-tree"></div>
+                    </div>
+                    <div id="tab-unopt-physical" class="tab-pane">
+                        <div id="tree-unopt-physical" class="plan-tree"></div>
+                    </div>
+                    <div id="tab-physical" class="tab-pane">
+                        <div id="tree-physical" class="plan-tree"></div>
+                    </div>
+                    <div id="tab-comparison" class="tab-pane">
+                        <div id="cost-chart" class="cost-chart"></div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Catalog Sidebar -->
+        <aside id="catalog-sidebar" class="glass-panel hidden">
+            <div class="sidebar-header">
+                <h2>Catalog Inspector</h2>
+                <button class="btn btn-ghost btn-sm" onclick="toggleCatalog()">✕</button>
+            </div>
+            <div id="catalog-content"></div>
+        </aside>
+
+        <!-- Error -->
+        <div id="error-panel" class="panel glass-panel error-panel hidden">
+            <p id="error-message"></p>
+        </div>
+    </main>
+
+    <script src="/app.js"></script>
+</body>
+</html>
